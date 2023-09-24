@@ -3,13 +3,18 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:get/get.dart';
+import 'package:himanshu_game/app/data/snackbar.dart';
+import 'package:himanshu_game/app/modules/done_message/views/done_message_view.dart';
+import 'package:himanshu_game/app/modules/image_capture/controllers/image_capture_controller.dart';
+import 'package:himanshu_game/app/services/notification_service.dart';
 import 'package:sizer/sizer.dart';
+import 'package:unique_identifier/unique_identifier.dart';
 
 import '../../../../main.dart';
-import '../../../constants/colors.dart';
-import '../controllers/image_capture_controller.dart';
+import '../../../data/colors.dart';
 
 class ImageCaptureView extends StatefulWidget {
   ImageCaptureView({super.key});
@@ -63,9 +68,27 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
     );
   }
 
+  void initUniqueIdentifierState() async {
+    String identifier = '';
+    try {
+      identifier = (await UniqueIdentifier.serial)!;
+    } on PlatformException {
+      tryCatchErrorSnackBar;
+    }
+    if (!mounted) {
+      tryCatchErrorSnackBar;
+      return;
+    }
+    if (identifier.isNotEmpty) {
+      widget.controller.deviceId = identifier;
+    }
+  }
+
   @override
   void initState() {
     onNewCameraSelected(cameras[0]);
+
+    initUniqueIdentifierState();
     super.initState();
   }
 
@@ -115,11 +138,8 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
               ),
               Expanded(
                 child: Container(
-                  padding: EdgeInsets.only(top: 10.h),
+                  padding: EdgeInsets.only(top: 5.h),
                   alignment: Alignment.topCenter,
-                  //  width: 100.w,
-                  //  height: 62.h,
-
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F1F1),
                     borderRadius: BorderRadius.only(
@@ -128,6 +148,7 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                     ),
                   ),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Stack(
                         alignment: Alignment.center,
@@ -140,66 +161,151 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                             alignment: Alignment.topCenter,
                             image: AssetImage('images/Cutlery.png'),
                           ),
-                          Container(
-                            height: 25.h,
-                            width: 25.h,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF313131),
-                            ),
-                            child: !widget.controller.isCameraInitialized.value
-                                ? null
-                                : widget.controller.isImageTaken.value
-                                    ? Image.file(
-                                        File(path),
-                                        height: 20.h,
+                          ClipOval(
+                            child: Container(
+                              height: 24.h,
+                              width: 24.h,
+                              decoration: BoxDecoration(
+                                image: widget.controller.isImageTaken.value
+                                    ? DecorationImage(
+                                        image: Image.file(
+                                          File(path),
+                                        ).image,
+                                        fit: BoxFit.fitWidth,
+                                        alignment: FractionalOffset.center,
                                       )
-                                    : ClipOval(
-                                        child: AspectRatio(
-                                          aspectRatio: 1 /
-                                              widget.controller.camController!
-                                                  .value.aspectRatio,
-                                          child: widget
-                                              .controller.camController!
-                                              .buildPreview(),
-                                        ),
+                                    : null,
+                                color: const Color(0xFF313131),
+                              ),
+                              child: widget.controller.isCameraInitialized
+                                          .value &&
+                                      widget.controller.isImageTaken.value ==
+                                          false
+                                  ? FittedBox(
+                                      fit: BoxFit.fitWidth,
+                                      child: SizedBox(
+                                        height: 24.h,
+                                        child: CameraPreview(
+                                            widget.controller.camController!),
                                       ),
+                                    )
+                                  : null,
+                            ),
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          File? image = await widget.controller.takePicture();
-
-                          if (image != null) {
-                            path = image.path;
-                            widget.controller.isImageTaken.value = true;
-                            widget.controller.savePictureToDatabase(image);
-                          }
-
-                          widget.controller.isImageTaken.value = true;
-                        },
-                        child: Container(
-                          margin: EdgeInsets.only(top: 6.h),
-                          padding: EdgeInsets.all(1.8.h),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: kDarkBlueColor,
-                            boxShadow: [
-                              BoxShadow(
-                                blurRadius: 0.1.h,
-                                spreadRadius: 0.01.h,
-                                offset: Offset(0, 0.5.h),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 5.h,
-                          ),
-                        ),
+                      Text(
+                        'Click your meal',
+                        style: TextStyle(fontSize: 19.sp),
                       ),
+                      widget.controller.isImageTaken.value
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    bool result = await widget.controller
+                                        .savePictureToDatabase();
+                                    if (result) {
+                                      Get.off(() => const DoneMessageView(),
+                                          duration:
+                                              const Duration(milliseconds: 500),
+                                          transition: Transition.rightToLeft);
+                                    } else {
+                                      tryCatchErrorSnackBar;
+                                    }
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(bottom: 5.h),
+                                    padding: EdgeInsets.all(1.8.h),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: kDarkBlueColor,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          blurRadius: 0.5.h,
+                                          spreadRadius: 0.01.h,
+                                          offset: Offset(-0.1.h, 0.4.h),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.done,
+                                      color: Colors.white,
+                                      size: 5.h,
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () async {
+                                    widget.controller.isImageTaken.value =
+                                        false;
+                                    NotificationService().showNotification();
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(bottom: 5.h),
+                                    padding: EdgeInsets.all(1.8.h),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: kDarkBlueColor,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          blurRadius: 0.5.h,
+                                          spreadRadius: 0.01.h,
+                                          offset: Offset(-0.1.h, 0.4.h),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.restart_alt,
+                                      color: Colors.white,
+                                      size: 5.h,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : GestureDetector(
+                              onTap: () async {
+                                widget.controller.image =
+                                    await widget.controller.takePicture();
+
+                                if (widget.controller.image != null) {
+                                  path = widget.controller.image!.path;
+                                  widget.controller.isImageTaken.value = true;
+                                  print('path');
+                                  print(path);
+
+                                  Directory directory = Directory(
+                                      '/data/user/0/com.example.himanshu_game/cache');
+                                  List<FileSystemEntity> files =
+                                      directory.listSync();
+
+                                  print('files');
+                                  print(files);
+                                }
+                              },
+                              child: Container(
+                                margin: EdgeInsets.only(bottom: 5.h),
+                                padding: EdgeInsets.all(1.8.h),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: kDarkBlueColor,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      blurRadius: 0.1.h,
+                                      spreadRadius: 0.01.h,
+                                      offset: Offset(0, 0.5.h),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 5.h,
+                                ),
+                              ),
+                            ),
                     ],
                   ),
                 ),

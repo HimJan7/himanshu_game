@@ -7,6 +7,9 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class ImageCaptureController extends GetxController {
   RxBool isImageTaken = false.obs;
+  File? image;
+  String? deviceId;
+  
 
   CameraController? camController;
   RxBool isCameraInitialized = false.obs;
@@ -25,7 +28,7 @@ class ImageCaptureController extends GetxController {
     }
     try {
       XFile file = await cameraController.takePicture();
-      File imageFile = File(file!.path);
+      File imageFile = File(file.path);
       return imageFile;
     } on CameraException catch (e) {
       if (kDebugMode) {
@@ -35,17 +38,21 @@ class ImageCaptureController extends GetxController {
     }
   }
 
-  void savePictureToDatabase(File image) async {
+  Future<bool> savePictureToDatabase() async {
     String imageId = idGenerator();
-    try {
-      final ref = firebase_storage.FirebaseStorage.instance
-          .ref('images')
-          .child(imageId);
-      await ref.putFile(image);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving image to firebase storage.');
+    if (deviceId!.isNotEmpty) {
+      try {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref('devices')
+            .child(deviceId!);
+        await ref.child(imageId).putFile(image!);
+        return true;
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error saving image to firebase storage.');
+        }
       }
     }
+    return false;
   }
 }

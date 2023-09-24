@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../modules/done_message/bindings/done_message_binding.dart';
+import '../modules/done_message/views/done_message_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/image_capture/bindings/image_capture_binding.dart';
@@ -20,8 +22,13 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.IMAGE_CAPTURE,
-      page: () =>  ImageCaptureView(),
+      page: () => ImageCaptureView(),
       binding: ImageCaptureBinding(),
+    ),
+    GetPage(
+      name: _Paths.DONE_MESSAGE,
+      page: () => const DoneMessageView(),
+      binding: DoneMessageBinding(),
     ),
   ];
 }
