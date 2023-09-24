@@ -1,10 +1,12 @@
+
+
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:himanshu_game/app/data/colors.dart';
 import 'package:himanshu_game/app/modules/image_capture/views/image_capture_view.dart';
-import 'package:himanshu_game/app/services/notification_service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:himanshu_game/main.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../data/snackbar.dart';
@@ -14,6 +16,7 @@ class HomeView extends GetView<HomeController> {
   const HomeView({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    Get.put(HomeController());
     return Sizer(
       builder: (context, orientation, deviceType) {
         return GetMaterialApp(
@@ -25,7 +28,8 @@ class HomeView extends GetView<HomeController> {
                 appBar: AppBar(
                   title: Text(
                     'Home',
-                    style: TextStyle(fontSize: 20.sp),
+                    style: GoogleFonts.andika(
+                        textStyle: TextStyle(fontSize: 20.sp)),
                   ),
                   centerTitle: true,
                   backgroundColor: kDarkBlueColor,
@@ -34,24 +38,14 @@ class HomeView extends GetView<HomeController> {
                   alignment: Alignment.bottomCenter,
                   child: GestureDetector(
                     onTap: () async {
-                      await Permission.notification.request().isGranted;
-                      if (await Permission.notification.isPermanentlyDenied ||
-                          await Permission.notification.isDenied) {
-                        permissionDeniedSnackbar;
+                      if (cameras.isNotEmpty) {
+                        controller.getUserPermission();
+                        Get.to(() => ImageCaptureView(),
+                            duration: const Duration(milliseconds: 500),
+                            transition: Transition.rightToLeft);
+                      } else {
+                        noCameraAvailable;
                       }
-
-                      await Permission.camera.request().isGranted;
-                      if (await Permission.camera.isPermanentlyDenied ||
-                          await Permission.camera.isDenied) {
-                        permissionDeniedSnackbar;
-                      }
-
-                      NotificationService().showNotification(
-                          title: 'Sample title', body: 'It works!');
-
-                      Get.to(ImageCaptureView(),
-                          duration: const Duration(milliseconds: 500),
-                          transition: Transition.rightToLeft);
                     },
                     child: Container(
                       margin: EdgeInsets.only(bottom: 15.h),
@@ -70,7 +64,10 @@ class HomeView extends GetView<HomeController> {
                       ),
                       child: Text(
                         'Share Your Meal',
-                        style: TextStyle(fontSize: 20.sp, color: Colors.white),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.andika(
+                            textStyle: TextStyle(
+                                fontSize: 20.sp, color: Colors.white)),
                       ),
                     ),
                   ),

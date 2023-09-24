@@ -5,14 +5,16 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
+import '../../../services/notification_service.dart';
+
 class ImageCaptureController extends GetxController {
-  RxBool isImageTaken = false.obs;
+  RxBool isImageTaken = false.obs,
+      isCameraInitialized = false.obs,
+      processingImage = false.obs;
   File? image;
   String? deviceId;
-  
-
   CameraController? camController;
-  RxBool isCameraInitialized = false.obs;
+
   final firebase_storage.FirebaseStorage storage =
       firebase_storage.FirebaseStorage.instance;
 
@@ -54,5 +56,12 @@ class ImageCaptureController extends GetxController {
       }
     }
     return false;
+  }
+
+  void sendNotification() {
+    NotificationService().showNotification(
+      title: 'Congratulations!',
+      body: 'Thank you for sharing food with me.',
+    );
   }
 }

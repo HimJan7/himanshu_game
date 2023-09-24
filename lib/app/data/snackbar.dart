@@ -41,3 +41,21 @@ SnackbarController permissionDeniedSnackbar = Get.snackbar(
     color: Colors.white,
   ),
 );
+
+SnackbarController noCameraAvailable = Get.snackbar(
+  'Error !',
+  'No Camera Available in this device.',
+  snackPosition: SnackPosition.BOTTOM,
+  colorText: Colors.white,
+  backgroundColor: kDarkBlueColor,
+  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+  margin: EdgeInsets.symmetric(
+    horizontal: 3.w,
+    vertical: 1.5.h,
+  ),
+  icon: Icon(
+    Icons.error,
+    size: 4.h,
+    color: Colors.white,
+  ),
+);

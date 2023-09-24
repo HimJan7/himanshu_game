@@ -9,7 +9,6 @@ import 'package:get/get.dart';
 import 'package:himanshu_game/app/data/snackbar.dart';
 import 'package:himanshu_game/app/modules/done_message/views/done_message_view.dart';
 import 'package:himanshu_game/app/modules/image_capture/controllers/image_capture_controller.dart';
-import 'package:himanshu_game/app/services/notification_service.dart';
 import 'package:sizer/sizer.dart';
 import 'package:unique_identifier/unique_identifier.dart';
 
@@ -60,12 +59,13 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
     if (mounted) {
       widget.controller.isCameraInitialized.value =
           widget.controller.camController!.value.isInitialized;
+
+      await widget.controller.camController!.setFlashMode(
+        FlashMode.off,
+      );
     }
 
     // Disable Flash
-    await widget.controller.camController!.setFlashMode(
-      FlashMode.off,
-    );
   }
 
   void initUniqueIdentifierState() async {
@@ -85,9 +85,24 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = widget.controller.camController;
+
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive) {
+      // Free up memory when camera not active
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      // Reinitialize the camera with same properties
+      onNewCameraSelected(cameraController.description);
+    }
+  }
+
+  @override
   void initState() {
     onNewCameraSelected(cameras[0]);
-
     initUniqueIdentifierState();
     super.initState();
   }
@@ -96,23 +111,6 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
   void dispose() {
     widget.controller.camController?.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = widget.controller.camController;
-
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      // Free up memory when camera not active
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      // Reinitialize the camera with same properties
-      onNewCameraSelected(cameraController.description);
-    }
   }
 
   @override
@@ -198,15 +196,20 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                         'Click your meal',
                         style: TextStyle(fontSize: 19.sp),
                       ),
-                      widget.controller.isImageTaken.value
+                      widget.controller.isImageTaken.value &&
+                              widget.controller.processingImage.value == false
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 GestureDetector(
                                   onTap: () async {
+                                    widget.controller.processingImage.value =
+                                        true;
                                     bool result = await widget.controller
                                         .savePictureToDatabase();
+
                                     if (result) {
+                                      widget.controller.sendNotification();
                                       Get.off(() => const DoneMessageView(),
                                           duration:
                                               const Duration(milliseconds: 500),
@@ -216,7 +219,7 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                                     }
                                   },
                                   child: Container(
-                                    margin: EdgeInsets.only(bottom: 5.h),
+                                    height: 20.h,
                                     padding: EdgeInsets.all(1.8.h),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
@@ -238,12 +241,12 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                                 ),
                                 GestureDetector(
                                   onTap: () async {
+                                    await File(path).delete();
                                     widget.controller.isImageTaken.value =
                                         false;
-                                    NotificationService().showNotification();
                                   },
                                   child: Container(
-                                    margin: EdgeInsets.only(bottom: 5.h),
+                                    height: 20.h,
                                     padding: EdgeInsets.all(1.8.h),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
@@ -265,46 +268,59 @@ class _ImageCaptureViewState extends State<ImageCaptureView>
                                 ),
                               ],
                             )
-                          : GestureDetector(
-                              onTap: () async {
-                                widget.controller.image =
-                                    await widget.controller.takePicture();
+                          : Container(
+                              height: 20.h,
+                              width: 20.h,
+                              padding: EdgeInsets.all(5.5.h),
+                              child: widget.controller.processingImage.value ||
+                                      widget.controller.isCameraInitialized
+                                              .value ==
+                                          false
+                                  ? Padding(
+                                      padding: EdgeInsets.all(1.h),
+                                      child: CircularProgressIndicator(
+                                        color: kDarkBlueColor,
+                                        strokeWidth: 0.6.h,
+                                      ),
+                                    )
+                                  : GestureDetector(
+                                      onTap: () async {
+                                        widget.controller.processingImage
+                                            .value = true;
+                                        widget.controller.image = await widget
+                                            .controller
+                                            .takePicture();
+                                        widget.controller.processingImage
+                                            .value = false;
 
-                                if (widget.controller.image != null) {
-                                  path = widget.controller.image!.path;
-                                  widget.controller.isImageTaken.value = true;
-                                  print('path');
-                                  print(path);
-
-                                  Directory directory = Directory(
-                                      '/data/user/0/com.example.himanshu_game/cache');
-                                  List<FileSystemEntity> files =
-                                      directory.listSync();
-
-                                  print('files');
-                                  print(files);
-                                }
-                              },
-                              child: Container(
-                                margin: EdgeInsets.only(bottom: 5.h),
-                                padding: EdgeInsets.all(1.8.h),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: kDarkBlueColor,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      blurRadius: 0.1.h,
-                                      spreadRadius: 0.01.h,
-                                      offset: Offset(0, 0.5.h),
+                                        if (widget.controller.image != null) {
+                                          path = widget.controller.image!.path;
+                                          widget.controller.isImageTaken.value =
+                                              true;
+                                        } else {
+                                          tryCatchErrorSnackBar;
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.all(1.8.h),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: kDarkBlueColor,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              blurRadius: 0.1.h,
+                                              spreadRadius: 0.01.h,
+                                              offset: Offset(0, 0.5.h),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.white,
+                                          size: 5.h,
+                                        ),
+                                      ),
                                     ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 5.h,
-                                ),
-                              ),
                             ),
                     ],
                   ),

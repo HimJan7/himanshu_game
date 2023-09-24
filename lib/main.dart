@@ -2,9 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:himanshu_game/app/data/snackbar.dart';
 import 'package:himanshu_game/app/modules/home/views/home_view.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'app/services/notification_service.dart';
 
@@ -19,9 +17,6 @@ Future<void> main() async {
       print('Error in fetching the cameras: $e');
     }
   }
-
-
-
   await Firebase.initializeApp();
   NotificationService().initNotification();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../data/colors.dart';
@@ -14,8 +15,9 @@ class DoneMessageView extends GetView<DoneMessageController> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'Done',
-            style: TextStyle(fontSize: 20.sp),
+            'Thank You!',
+            style: GoogleFonts.andika(
+                textStyle: TextStyle(fontSize: 20.sp, color: Colors.white)),
           ),
           centerTitle: true,
           backgroundColor: kDarkBlueColor,
@@ -23,10 +25,12 @@ class DoneMessageView extends GetView<DoneMessageController> {
         body: Center(
           child: Text(
             'Good Job',
-            style: TextStyle(
-                fontSize: 40.sp,
-                color: kDarkBlueColor,
-                fontWeight: FontWeight.bold),
+            style: GoogleFonts.lilitaOne(
+              textStyle: TextStyle(
+                  fontSize: 50.sp,
+                  color: kDarkBlueColor,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ),
